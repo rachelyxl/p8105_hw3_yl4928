@@ -1,0 +1,247 @@
+---
+title: "Untitled"
+author: "Rachel"
+date: "10/18/2021"
+output: github_document
+---
+
+```{r, message = FALSE}
+library(tidyverse)
+```
+
+
+## problem 1 
+
+```{r, message = FALSE}
+library(p8105.datasets)
+data("instacart")
+
+instacart_df = instacart
+```
+
+1.0.1 a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations.
+
+The instacart dataset containts `r nrow(instacart_df)` observations. 
+It contains `r ncol(instacart_df)` variables. 
+There are ``r names(instacart_df)`` variables in this dataset. 
+Among those variables, some key variables include `order_id`, `product_id`, `add_to_cart_order`, `user_id`,  `user_id`, `aisle_id`, `product_name`, and `department_id`. 
+
+1.0.2 Giving illstrative examples of observations.
+
+1.1 How many aisles are there, and which aisles are the most items ordered from?
+```{r, message = FALSE}
+n_of_aisles = 
+  instacart_df %>% 
+  count(aisle, name = "n_of_aisles") %>% 
+  arrange(desc(n_of_aisles))
+
+n_of_aisles
+```
+In the `n_of_aisles`, there are `r nrow(n_of_aisles)` aisles. The most items is `fresh vegetables`. 
+
+1.2 Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
+
+```{r, message = FALSE, fig.width=5}
+n_of_aisles %>% 
+  filter(n_of_aisles > 10000) %>% 
+  ggplot(aes(x = n_of_aisles, y = aisle, fill = aisle)) + 
+  geom_bar(
+    stat = "identity", 
+  ) + 
+  labs(
+    title = "Number of Items Ordered in Each Aisle", 
+    capition = "Aisles with more than 10000 items ordered", 
+    x = "Number of items", 
+    y = "Aisle"
+  )
+```
+
+1.3 Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
+
+```{r, message = FALSE}
+instacart_df %>% 
+  filter(aisle == c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>% 
+  group_by(aisle, product_name) %>% 
+  summarize(n_items_ordered = n()) %>% 
+  arrange(desc(n_items_ordered)) %>% 
+  do(head(., n = 3)) %>% 
+  knitr::kable(
+    caption = "Three Most Popular Items"
+  )
+```
+1.4 Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+
+```{r, message = FALSE}
+instacart_df %>% 
+  filter(product_name == c("Pink Lady Apples", "Coffee Ice Cream")) %>% 
+  group_by(product_name, order_dow) %>% 
+  summarize(
+    mean_hour_of_day = mean(order_hour_of_day)) %>% 
+  mutate(order_dow = recode(order_dow, 
+                            "0" = "Monday", 
+                            "1" = "Tuesday",
+                            "2" = "Wednesday", 
+                            "3" = "Thursday", 
+                            "4" = "Friday", 
+                            "5" = "Saturday", 
+                            "6" = "Sunday")) %>% 
+  pivot_wider(
+    names_from = order_dow,
+    values_from = mean_hour_of_day
+  ) %>% 
+  knitr::kable(
+    digits = 2,
+    caption = "Mean Hour of the Day")
+```
+
+## Problem 2 
+
+2.0 load the dataset of `BRFSS`. 
+```{r}
+data("brfss_smart2010")
+brfss_df = brfss_smart2010
+```
+
+2.1 do some data cleaning: format the data to use appropriate variable names; focus on the “Overall Health” topic; include only responses from “Excellent” to “Poor”; organize responses as a factor taking levels ordered from “Poor” to “Excellent”. 
+
+```{r}
+brfss_df = 
+  brfss_df %>% 
+  janitor::clean_names() %>% 
+  filter(topic == "Overall Health") %>% 
+  mutate(
+    response = factor(response, 
+                     levels = c("Excellent", "Very good", "Good", "Fair", "Poor"),
+                     ordered = TRUE)
+  )
+
+brfss_df
+```
+2.2.1 In 2002, which states were observed at 7 or more locations? What about in 2010?
+
+```{r, message = FALSE}
+year_2002 = 
+  brfss_df %>% 
+  filter(year == 2002) %>% 
+  group_by(locationabbr) %>% 
+  summarize(number_locations = n()/5) %>% 
+  filter(number_locations >= 7) %>% 
+  arrange(number_locations) 
+
+year_2002 %>% 
+  knitr::kable(
+    caption = "Number of Locations were observed in 2002" 
+  )
+```
+
+In 2002, there are `r nrow(year_2002)` states were observed at 7 or more locations, which are `r pull(year_2002, locationabbr)`. 
+
+```{r, message = FALSE}
+year_2010 = 
+  brfss_df %>% 
+  filter(year == 2010) %>% 
+  group_by(locationabbr) %>% 
+  summarize(number_locations = n()/5) %>% 
+  filter(number_locations >= 7) %>% 
+  arrange(number_locations) 
+
+year_2010 %>% 
+  knitr::kable(
+    caption = "Number of Locations were observed in 2010" 
+  )
+```
+
+In 2010, there are `r nrow(year_2010)` states were observed at 7 or more locations, which are `r pull(year_2010, locationabbr)`. 
+
+
+2.2.2 Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state. Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).
+
+```{r, message = FALSE, fig.width = 10}
+excellent_response = 
+  brfss_df %>% 
+  filter(response == "Excellent") %>% 
+  group_by(year, locationabbr) %>% 
+  summarize(
+    mean_data_value = mean(data_value, na.rm = TRUE),
+  ) %>% 
+  ggplot(aes(x = year, y = mean_data_value, color = locationabbr)) + 
+  geom_line(size = .9) +
+  theme(
+    legend.position = "right"
+  ) +
+  labs(
+    title = "Mean of teh data_value Across Locatiosn Within a State",
+    caption = "limited to Excellent responses"
+  )
+``` 
+
+2.2.3 Make a two-panel plot showing, for the years 2006, and 2010, distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.
+
+```{r, message = FALSE, fig.width = 5}
+brfss_df %>% 
+  filter(year == c(2006, 2010) & locationabbr == "NY") %>% 
+  ggplot(aes(x = data_value, fill = response)) + 
+  geom_density(alpha = .8) +
+  facet_grid(.~ year) +
+  labs(
+    title = "Data Values for responses among location in NY State in 2006 and 2010", 
+    caption = "two-panel plot for distribution of data values in 2006 and 2010"
+  )
+```
+
+
+## Problem 3 
+
+3.1 Load, tidy, and otherwise wrangle the data
+```{r, message = FALSE}
+accel_df = read_csv("./data/accel_data.csv") %>% 
+  janitor::clean_names() %>% 
+  pivot_longer(
+    activity_1:activity_1440, 
+    names_prefix = "activity_", 
+    names_to = "minute", 
+    values_to = "activity"
+    ) %>% 
+  mutate(
+    minute = as.numeric(minute), 
+    day_of_week = recode(day,"Monday" = "Weekday", 
+                         "Tuesday" = "Weekday", 
+                         "Wednesday" = "Weekday", 
+                         "Thursday" = "Weekday", 
+                         "Friday" = "Weekday", 
+                         "Saturday" = "Weekend", 
+                         "Sunday" = "Weekend") 
+  )
+```
+
+3.1.1 Describe the resulting dataset
+In this dataset, there are `r ncol(accel_df)` varaibles, which are `r names(accel_df)` variables. There are `r nrow(accel_df)` observations.
+
+
+3.2 aggregate accross minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?
+
+```{r}
+totalact_df = 
+  accel_df %>% 
+  group_by(week, day) %>% 
+  summarize(sum_of_activity = sum(activity)) %>% 
+  knitr::kable(
+    catpion = "Total activity variable for each day"
+  )
+```
+Obviously, the total activity during weekdays is much more than the weekends. 
+
+
+3.3 Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week.
+```{r, fig.width=5}
+accel_df %>% 
+  ggplot(aes(x = minute/60, y = activity, color = day)) +
+  geom_line() + 
+  labs(
+    x = "Hours", 
+    y = "Activity", 
+    title = "24-hour activity time courses for each day",
+    caption = "single-panel plot"
+  )
+```
+Based on this single-panel plot, it is obvious that during a 24-hour activity time course, the total activity is more within a day from hour 6 to hour 22 approximately than other hours within a day. 
