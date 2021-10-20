@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "p8105_hw3_yl4928"
 author: "Rachel"
 date: "10/18/2021"
 output: github_document
@@ -27,6 +27,10 @@ There are ``r names(instacart_df)`` variables in this dataset.
 Among those variables, some key variables include `order_id`, `product_id`, `add_to_cart_order`, `user_id`,  `user_id`, `aisle_id`, `product_name`, and `department_id`. 
 
 1.0.2 Giving illstrative examples of observations.
+```{r, message = FALSE}
+head(instacart, 6)
+```
+
 
 1.1 How many aisles are there, and which aisles are the most items ordered from?
 ```{r, message = FALSE}
